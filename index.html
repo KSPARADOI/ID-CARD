@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aplikasi Kartu Pelajar - Google Form Integration</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+  <style>
+    /* Ukuran KTP Standard: 85.6mm x 53.9mm */
+    .card-ktp {
+      width: 85.6mm;
+      height: 53.9mm;
+      position: relative;
+      background-size: cover;
+      background-position: center;
+      box-sizing: border-box;
+    }
+    @media print {
+      .no-print { display: none !important; }
+    }
+  </style>
+</head>
+<body class="bg-slate-100 min-h-screen text-slate-800 p-4 md:p-8">
+
+  <header class="max-w-7xl mx-auto mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b pb-4 border-slate-300">
+    <div>
+      <h1 class="text-2xl font-bold text-slate-900">Aplikasi Cetak Kartu Pelajar</h1>
+      <p class="text-sm text-slate-600">Integrasi Google Form & Google Drive (Ukuran Standard KTP)</p>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto space-y-6">
+
+    <!-- Konfigurasi Integration & Background -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      
+      <!-- Box API Google Apps Script -->
+      <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+        <h2 class="font-semibold text-slate-800 mb-2">1. Hubungkan Google Form / Sheet</h2>
+        <label class="block text-xs font-medium text-slate-500 mb-1">URL Web App Google Apps Script</label>
+        <div class="flex gap-2">
+          <input type="text" id="scriptUrl" placeholder="https://script.google.com/macros/s/.../exec" class="w-full text-xs p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+          <button onclick="fetchDataFromGoogle()" class="bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 py-2 rounded-lg font-medium transition">Tarik Data</button>
+        </div>
+      </div>
+
+      <!-- Background Depan -->
+      <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+        <h2 class="font-semibold text-slate-800 mb-2">2. Desain Latar Depan</h2>
+        <input type="file" id="bgFrontInput" accept="image/*" class="text-xs w-full text-slate-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+      </div>
+
+      <!-- Background Belakang -->
+      <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+        <h2 class="font-semibold text-slate-800 mb-2">3. Desain Latar Belakang</h2>
+        <input type="file" id="bgBackInput" accept="image/*" class="text-xs w-full text-slate-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+      </div>
+
+    </div>
+
+    <!-- Toolbar Filter & Action Download -->
+    <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col md:flex-row justify-between items-center gap-4">
+      <div class="flex flex-wrap items-center gap-3 w-full md:w-auto">
+        <div>
+          <label class="block text-xs font-medium text-slate-500">Filter Kelas</label>
+          <select id="filterKelas" onchange="applyFilters()" class="text-xs p-2 border rounded-lg bg-slate-50 min-w-[120px]">
+            <option value="">Semua Kelas</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-500">Filter Jurusan</label>
+          <select id="filterJurusan" onchange="applyFilters()" class="text-xs p-2 border rounded-lg bg-slate-50 min-w-[120px]">
+            <option value="">Semua Jurusan</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-500">Cari Siswa</label>
+          <input type="text" id="searchSiswa" oninput="applyFilters()" placeholder="Nama / NISN..." class="text-xs p-2 border rounded-lg bg-slate-50 min-w-[150px]">
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2 w-full md:w-auto justify-end">
+        <button onclick="downloadPDFMassal()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-4 py-2 rounded-lg font-medium shadow-sm transition flex items-center gap-1.5">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+          Download Massal PDF (A4)
+        </button>
+      </div>
+    </div>
+
+    <!-- Preview List Siswa -->
+    <div id="studentsContainer" class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+      <div class="col-span-full text-center py-12 text-slate-400 bg-white rounded-xl border border-dashed border-slate-300">
+        Mengambil data dari Google Form...
+      </div>
+    </div>
+
+  </main>
+
+  <script>
+    // =========================================================================
+    // TEMPELKAN URL APPS SCRIPT ANDA DI BAVAH INI (DI DALAM TANDA PETIK):
+    // =========================================================================
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwBd9kFF5MNqkymscVSDZaJS0_tD0woCMNVsr_PrMmmZmSokkA6B6j_jJfKCAqWujkB/exec";
+    // =========================================================================
+
+    let studentsData = [];
+    let bgFrontUrl = '';
+    let bgBackUrl = '';
+
+    // Otomatis eksekusi tarik data saat halaman dibuka
+    window.addEventListener('DOMContentLoaded', () => {
+      if (SCRIPT_URL && !SCRIPT_URL.includes("PASTE_URL")) {
+        document.getElementById('scriptUrl').value = SCRIPT_URL;
+        fetchDataFromGoogle();
+      } else {
+        document.getElementById('studentsContainer').innerHTML = `
+          <div class="col-span-full text-center py-12 text-slate-400 bg-white rounded-xl border border-dashed border-slate-300">
+            Silakan masukkan URL Google Apps Script pada variabel SCRIPT_URL di dalam kode HTML.
+          </div>`;
+      }
+    });
+
+    // Handle Upload Background
+    document.getElementById('bgFrontInput').addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      if (file) {
+        bgFrontUrl = URL.createObjectURL(file);
+        renderStudents(getFilteredData());
+      }
+    });
+
+    document.getElementById('bgBackInput').addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      if (file) {
+        bgBackUrl = URL.createObjectURL(file);
+        renderStudents(getFilteredData());
+      }
+    });
+
+    // Fetch Data from Google Apps Script
+    async function fetchDataFromGoogle() {
+      const url = document.getElementById('scriptUrl').value.trim();
+      if (!url) {
+        alert("Silakan masukkan URL Google Apps Script!");
+        return;
+      }
+
+      try {
+        const response = await fetch(url);
+        studentsData = await response.json();
+        
+        populateFilters();
+        renderStudents(studentsData);
+      } catch (err) {
+        alert("Gagal mengambil data. Pastikan Web App Apps Script sudah dipublikasi untuk 'Anyone'.");
+        console.error(err);
+      }
+    }
+
+    function populateFilters() {
+      const kelasSet = new Set();
+      const jurusanSet = new Set();
+
+      studentsData.forEach(s => {
+        if (s.kelas) kelasSet.add(s.kelas);
+        if (s.jurusan) jurusanSet.add(s.jurusan);
+      });
+
+      const filterKelas = document.getElementById('filterKelas');
+      filterKelas.innerHTML = '<option value="">Semua Kelas</option>';
+      kelasSet.forEach(k => filterKelas.innerHTML += `<option value="${k}">${k}</option>`);
+
+      const filterJurusan = document.getElementById('filterJurusan');
+      filterJurusan.innerHTML = '<option value="">Semua Jurusan</option>';
+      jurusanSet.forEach(j => filterJurusan.innerHTML += `<option value="${j}">${j}</option>`);
+    }
+
+    function getFilteredData() {
+      const kelas = document.getElementById('filterKelas').value;
+      const jurusan = document.getElementById('filterJurusan').value;
+      const search = document.getElementById('searchSiswa').value.toLowerCase();
+
+      return studentsData.filter(s => {
+        const matchKelas = !kelas || s.kelas === kelas;
+        const matchJurusan = !jurusan || s.jurusan === jurusan;
+        const matchSearch = !search || s.nama.toLowerCase().includes(search) || s.nisn.toString().includes(search);
+        return matchKelas && matchJurusan && matchSearch;
+      });
+    }
+
+    function applyFilters() {
+      renderStudents(getFilteredData());
+    }
+
+    function renderStudents(data) {
+      const container = document.getElementById('studentsContainer');
+      container.innerHTML = '';
+
+      if (data.length === 0) {
+        container.innerHTML = `<div class="col-span-full text-center py-12 text-slate-400 bg-white rounded-xl border border-slate-200">Tidak ada data siswa ditemukan.</div>`;
+        return;
+      }
+
+      data.forEach((student, index) => {
+        const cardWrapper = document.createElement('div');
+        cardWrapper.className = 'bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col gap-4';
+
+        cardWrapper.innerHTML = `
+          <div class="flex justify-between items-center border-b pb-2">
+            <div>
+              <h3 class="font-bold text-slate-800 text-sm">${student.nama}</h3>
+              <p class="text-xs text-slate-500">NISN: ${student.nisn} | ${student.kelas} - ${student.jurusan}</p>
+            </div>
+            <button onclick="downloadPerSiswaZip(${index})" class="bg-blue-50 hover:bg-blue-100 text-blue-600 text-xs px-3 py-1.5 rounded-lg font-medium transition flex items-center gap-1">
+              💾 Download ZIP
+            </button>
+          </div>
+
+          <div class="flex flex-wrap justify-center gap-4 overflow-x-auto p-2 bg-slate-50 rounded-lg">
+            
+            <!-- TAMPAK DEPAN -->
+            <div id="card-front-${index}" class="card-ktp rounded-lg shadow-md overflow-hidden text-slate-800 border border-slate-300 flex flex-col justify-between p-3" style="background-image: url('${bgFrontUrl}'); bg-slate-200">
+              <div class="flex items-center gap-2 border-b border-slate-300/50 pb-1.5">
+                <div class="text-[9px] font-bold uppercase tracking-wider leading-tight">
+                  KARTU TANDA PELAJAR<br>
+                  <span class="text-[7px] font-normal text-slate-600">SEKOLAH MENENGAH ATAS</span>
+                </div>
+              </div>
+
+              <div class="flex gap-3 my-auto items-center">
+                <!-- Foto 3x4 -->
+                <div class="w-[22mm] h-[29.3mm] bg-slate-300 border border-slate-400 rounded overflow-hidden flex-shrink-0">
+                  <img src="${student.foto}" class="w-full h-full object-cover" onerror="this.src='https://via.placeholder.com/150?text=3x4'">
+                </div>
+
+                <!-- Detail Siswa -->
+                <div class="text-[8px] space-y-0.5 leading-tight">
+                  <p><span class="font-semibold inline-block w-12">NIS/NISN</span>: ${student.nisn}</p>
+                  <p><span class="font-semibold inline-block w-12">Nama</span>: ${student.nama}</p>
+                  <p><span class="font-semibold inline-block w-12">G.Kelamin</span>: ${student.jenisKelamin}</p>
+                  <p><span class="font-semibold inline-block w-12">Alamat</span>: ${student.alamat}</p>
+                  <p><span class="font-semibold inline-block w-12">Ortu</span>: ${student.namaOrtu}</p>
+                </div>
+              </div>
+
+              <div class="flex justify-between items-end pt-1 border-t border-slate-300/50">
+                <svg id="barcode-front-${index}" class="h-6 max-w-[45mm]"></svg>
+                <span class="text-[6px] text-slate-400">Berlaku Selama Menjadi Siswa</span>
+              </div>
+            </div>
+
+            <!-- TAMPAK BELAKANG -->
+            <div id="card-back-${index}" class="card-ktp rounded-lg shadow-md overflow-hidden text-slate-800 border border-slate-300 flex flex-col justify-between p-3" style="background-image: url('${bgBackUrl}'); bg-slate-200">
+              <div class="text-[8px] space-y-1">
+                <p class="font-bold border-b pb-1">TATA TERTIB KARTU PELAJAR</p>
+                <ol class="list-decimal pl-3 text-[7px] space-y-0.5">
+                  <li>Kartu wajib dibawa selama berada di lingkungan sekolah.</li>
+                  <li>Dilarang menyalahgunakan kartu milik orang lain.</li>
+                  <li>Jika menemukan kartu ini, harap mengembalikan ke pihak sekolah.</li>
+                </ol>
+              </div>
+
+              <div class="text-[7px] space-y-0.5 border-t pt-1">
+                <p class="font-semibold">Kontak Darurat Orang Tua:</p>
+                <p>WA: ${student.waOrtu || '-'}</p>
+                <p>Email: ${student.emailOrtu || '-'}</p>
+              </div>
+            </div>
+
+          </div>
+        `;
+
+        container.appendChild(cardWrapper);
+
+        // Render Barcode
+        setTimeout(() => {
+          JsBarcode(`#barcode-front-${index}`, student.nisn, {
+            format: "CODE128",
+            height: 25,
+            displayValue: false,
+            margin: 0
+          });
+        }, 50);
+      });
+    }
+
+    // Download Per Siswa -> File ZIP berisi Depan & Belakang (.png)
+    async function downloadPerSiswaZip(index) {
+      const student = getFilteredData()[index];
+      const zip = new JSZip();
+
+      const frontCard = document.getElementById(`card-front-${index}`);
+      const backCard = document.getElementById(`card-back-${index}`);
+
+      const canvasFront = await html2canvas(frontCard, { scale: 3, useCORS: true });
+      const canvasBack = await html2canvas(backCard, { scale: 3, useCORS: true });
+
+      const frontBlob = await new Promise(resolve => canvasFront.toBlob(resolve, 'image/png'));
+      const backBlob = await new Promise(resolve => canvasBack.toBlob(resolve, 'image/png'));
+
+      const cleanName = student.nama.replace(/[^a-zA-Z0-9]/g, "_");
+      
+      zip.file(`${student.nisn}_${cleanName}_DEPAN.png`, frontBlob);
+      zip.file(`${student.nisn}_${cleanName}_BELAKANG.png`, backBlob);
+
+      const content = await zip.generateAsync({ type: "blob" });
+      saveAs(content, `Kartu_Pelajar_${student.nisn}_${cleanName}.zip`);
+    }
+
+    // Download Massal PDF Halaman A4
+    async function downloadPDFMassal() {
+      const filtered = getFilteredData();
+      if (filtered.length === 0) {
+        alert("Tidak ada data untuk dicetak!");
+        return;
+      }
+
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF('p', 'mm', 'a4');
+
+      const marginX = 15;
+      const marginY = 15;
+      const cardWidth = 85.6;
+      const cardHeight = 53.9;
+      const gapX = 8;
+      const gapY = 8;
+
+      let currentX = marginX;
+      let currentY = marginY;
+      let countOnPage = 0;
+
+      for (let i = 0; i < filtered.length; i++) {
+        const frontCard = document.getElementById(`card-front-${i}`);
+        const canvasFront = await html2canvas(frontCard, { scale: 2, useCORS: true });
+        const imgData = canvasFront.toDataURL('image/jpeg', 0.95);
+
+        if (countOnPage > 0 && countOnPage % 8 === 0) {
+          pdf.addPage();
+          currentX = marginX;
+          currentY = marginY;
+          countOnPage = 0;
+        }
+
+        pdf.addImage(imgData, 'JPEG', currentX, currentY, cardWidth, cardHeight);
+        countOnPage++;
+
+        if (countOnPage % 2 === 0) {
+          currentX = marginX;
+          currentY += cardHeight + gapY;
+        } else {
+          currentX += cardWidth + gapX;
+        }
+      }
+
+      pdf.save(`Kartu_Pelajar_Massal.pdf`);
+    }
+  </script>
+</body>
+</html>
